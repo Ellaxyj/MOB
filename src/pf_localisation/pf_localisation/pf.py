@@ -2,6 +2,8 @@ from geometry_msgs.msg import Pose, PoseArray, Quaternion, Point
 from . pf_base import PFLocaliserBase
 
 from . util import rotateQuaternion, getHeading
+import random
+import math
 
 
 class PFLocaliser(PFLocaliserBase):
@@ -11,6 +13,16 @@ class PFLocaliser(PFLocaliserBase):
         super().__init__(logger, clock)
         
         # ----- Set motion model parameters
+        self.ODOM_ROTATION_NOISE = 0.1
+        self.ODOM_TRANSLATION_NOISE = 0.05
+        self.ODOM_DRIFT_NOISE =0.05
+
+        self.INITIAL_POSE_NOISE_X=0.2
+        self.INITIAL_POSE_NOISE_Y=0.2
+        self.INITIAL_POSE_NOISE_THETA=0.2
+
+        self.NUMBER_OF_PARTICLE= 1000
+        
  
         # ----- Sensor model parameters
         self.NUMBER_PREDICTED_READINGS = 20     # Number of readings to predict
@@ -30,7 +42,30 @@ class PFLocaliser(PFLocaliserBase):
         :Return:
             | (geometry_msgs.msg.PoseArray) poses of the particles
         """
-        raise NotImplementedError
+
+        particle_cloud = PoseArray()
+        particle_cloud.header.frame_id = "map"
+        particle_cloud.header.stamp = self._clock.now().to_msg()
+
+        init_x = initialpose.pose.pose.position.x
+        init_y = initialpose.pose.pose.position.y
+        init_theta = getHeading(initialpose.pose.pose.orientation)
+     
+
+
+
+        for i in range(self.NUMBER_OF_PARTICLE): 
+            x = random.gauss(init_x,self.ODOM_TRANSLATION_NOISE)
+            y = random.gauss(init_y,self.ODOM_DRIFT_NOISE)
+            theta = random.gauss(init_theta,self.ODOM_ROTATION_NOISE)
+
+            particle = Pose()
+            particle.position = Point(x=x,y=y,z=0.0)
+            particle.orientation = rotateQuaternion(Quaternion(w=1.0),theta)
+            particle_cloud.poses.append(particle)
+            
+        self.particlecloud = particle_cloud
+        return particle_cloud
     
     def update_particle_cloud(self, scan):
         """
@@ -41,7 +76,49 @@ class PFLocaliser(PFLocaliserBase):
             | scan (sensor_msgs.msg.LaserScan): laser scan to use for update
 
          """
-        raise NotImplementedError
+        particle_weights = []
+        for particle in self.particlecloud.poses:
+            weight = self.sensor_model.get_weight(scan,particle)
+            particle_weights.append(weight)
+
+        total_weight = sum(particle_weights)
+        if total_weight ==0:
+            particle_weights = [1.0/len(particle_weights) ]* len(particle_weights)
+        else:
+            for i in range(len(particle_weights)):
+                particle_weights[i] = particle_weights[i]/total_weight
+
+        square_total = 0.0
+        for j in particle_weights:
+            square_total += j*j
+        
+        effective_particle = 1.0/square_total
+        if effective_particle < self.NUMBER_OF_PARTICLE:
+            resampled = []
+            num_particles = len(self.particlecloud.poses)
+            ran = random.uniform(0,1.0/num_particles)
+            wei = particle_weights[0]
+            i = 0
+            for q in range(num_particles):
+                a = ran + wei*(1.0/num_particles)
+                while a > wei:
+                    i+=1
+                    wei+=particle_weights[i]
+                selected_particle = self.particlecloud.poses[i]
+                x = selected_particle.position.x + random.gauss(0,0.01)
+                y = selected_particle.position.y + random.gauss(0,0.01)
+                theta = getHeading(selected_particle.orientation) + random.gauss(0,0.01)
+
+                new_particle = Pose()
+                new_particle.position = Point(x=x,y=y,z=0.0)
+                new_particle.orientation = rotateQuaternion(Quaternion(w=1.0),theta)
+                resampled.append(new_particle)
+            self.particlecloud.poses = resampled
+
+
+        
+
+        
 
     def estimate_pose(self):
         """
@@ -59,4 +136,60 @@ class PFLocaliser(PFLocaliserBase):
         :Return:
             | (geometry_msgs.msg.Pose) robot's estimated pose.
          """
+        if not self.particlecloud:
+            return Pose()
+        
+        particles = self.particlecloud.poses
+        num_of_par = len(particles)
+        #mean of x
+        total_x = 0.0
+        for particle in particles:
+            total_x += particle.position.x
+        mean_x = total_x/num_of_par
+
+        #mean of y
+        total_y = 0.0
+        for particle in particles:
+            total_y += particle.position.y
+        mean_y = total_y/num_of_par
+        
+        #quarternion mean of x
+        total_quat_x = 0.0
+        for particle in particles:
+            total_quat_x += particle.orientation.x
+        mean_quat_x = total_quat_x/num_of_par
+
+        #quarternion mean of y
+        total_quat_y = 0.0
+        for particle in particles:
+            total_quat_y += particle.orientation.y
+        mean_quat_y = total_quat_y/num_of_par
+
+        #quarternion mean of z
+        total_quat_z = 0.0
+        for particle in particles:
+            total_quat_z += particle.orientation.z
+        mean_quat_z = total_quat_z/num_of_par
+
+        #quarternion mean of w
+        total_quat_w = 0.0
+        for particle in particles:
+            total_quat_w += particle.orientation.w
+        mean_quat_w = total_quat_w/num_of_par
+
+        euclidean = math.sqrt(mean_quat_x**2 + mean_quat_y**2+mean_quat_z**2+mean_quat_w**2)
+        mean_quat_x /=euclidean
+        mean_quat_y /= euclidean
+        mean_quat_z /=euclidean
+        mean_quat_w /=euclidean
+
+        estimate_pose = Pose()
+        estimate_pose.position = Point(x=mean_x,y=mean_y,z=0.0)
+        estimate_pose.orientation = Quaternion(x=mean_quat_x,y=mean_quat_y,z=mean_quat_z,w=mean_quat_w)
+        return estimate_pose
+
+
+
+
+
         raise NotImplementedError
