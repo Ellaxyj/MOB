@@ -13,9 +13,9 @@ class PFLocaliser(PFLocaliserBase):
         super().__init__(logger, clock)
         
         # ----- Set motion model parameters
-        self.ODOM_ROTATION_NOISE = 0.1
-        self.ODOM_TRANSLATION_NOISE = 0.05
-        self.ODOM_DRIFT_NOISE =0.05
+        self.ODOM_ROTATION_NOISE = 0.5
+        self.ODOM_TRANSLATION_NOISE = 0.5
+        self.ODOM_DRIFT_NOISE =0.5
 
         self.INITIAL_POSE_NOISE_X=0.2
         self.INITIAL_POSE_NOISE_Y=0.2
@@ -105,8 +105,8 @@ class PFLocaliser(PFLocaliserBase):
                     i+=1
                     wei+=particle_weights[i]
                 selected_particle = self.particlecloud.poses[i]
-                x = selected_particle.position.x + random.gauss(0,0.01)
-                y = selected_particle.position.y + random.gauss(0,0.01)
+                x = selected_particle.position.x + random.gauss(0,0.025)
+                y = selected_particle.position.y + random.gauss(0,0.025)
                 theta = getHeading(selected_particle.orientation) + random.gauss(0,0.01)
 
                 new_particle = Pose()
@@ -137,6 +137,7 @@ class PFLocaliser(PFLocaliserBase):
             | (geometry_msgs.msg.Pose) robot's estimated pose.
          """
         if not self.particlecloud:
+            self._logger.error("nothing")
             return Pose()
         
         particles = self.particlecloud.poses
