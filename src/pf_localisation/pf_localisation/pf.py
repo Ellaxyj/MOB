@@ -91,16 +91,21 @@ class PFLocaliser(PFLocaliserBase):
         square_total = 0.0
         for j in particle_weights:
             square_total += j*j
-        
         effective_particle = 1.0/square_total
+        
+        
         if effective_particle < self.NUMBER_OF_PARTICLE:
             resampled = []
             num_particles = len(self.particlecloud.poses)
-            ran = random.uniform(0,1.0/num_particles)
+            
+            num_random_particles = int(num_particles*0.1)
+            num_resampled_particles = num_particles - num_random_particles
+            
+            ran = random.uniform(0,1.0/num_resampled_particles)
             wei = particle_weights[0]
             i = 0
-            for q in range(num_particles):
-                a = ran + wei*(1.0/num_particles)
+            for q in range(num_resampled_particles):
+                a = ran + q*(1.0/num_resampled_particles)
                 while a > wei:
                     i+=1
                     wei+=particle_weights[i]
@@ -113,6 +118,16 @@ class PFLocaliser(PFLocaliserBase):
                 new_particle.position = Point(x=x,y=y,z=0.0)
                 new_particle.orientation = rotateQuaternion(Quaternion(w=1.0),theta)
                 resampled.append(new_particle)
+                
+                
+            for i in range(num_random_particles):
+                random_x = random.uniform(-50,50)
+                random_y = random.uniform(-50,50)
+                random_theta = random.uniform(-math.pi,math.pi)
+                random_particle = Pose()
+                random_particle.position = Point(x=random_x,y=random_y,z=0.0)
+                random_particle.orientation = rotateQuaternion(Quaternion(w=1.0),random_theta)
+                resampled.append(random_particle)
             self.particlecloud.poses = resampled
 
 
@@ -193,4 +208,4 @@ class PFLocaliser(PFLocaliserBase):
 
 
 
-        raise NotImplementedError
+        
