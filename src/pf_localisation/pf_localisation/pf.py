@@ -152,46 +152,67 @@ class PFLocaliser(PFLocaliserBase):
             | (geometry_msgs.msg.Pose) robot's estimated pose.
          """
         if not self.particlecloud:
-            self._logger.error("nothing")
             return Pose()
         
         particles = self.particlecloud.poses
         num_of_par = len(particles)
+        #coordinate of x and y
+        x_coords = sorted([p.position.x for p in particles])
+        y_coords = sorted([p.position.y for p in particles])
+        #calculated the median of x and y
+        median_x = x_coords[num_of_par // 2]
+        median_y = y_coords[num_of_par // 2]
+        #the distance of particle from center of cluster
+        distance = 5.0
+        selected_particles = []
+        #calculate the distance of each particle from the center of cluster and select the particles within the distance
+        for p in particles:
+            dist = math.sqrt((p.position.x - median_x)**2 + (p.position.y - median_y)**2)
+            if dist < distance:
+                selected_particles.append(p)
+    
+        if len(selected_particles) < num_of_par * 0.4:
+            selected_particles = particles
+    
+        num_selected = len(selected_particles)
+        
+        
+        
         #mean of x
         total_x = 0.0
-        for particle in particles:
+        for particle in selected_particles:
             total_x += particle.position.x
-        mean_x = total_x/num_of_par
+        mean_x = total_x/num_selected
 
         #mean of y
         total_y = 0.0
-        for particle in particles:
+        for particle in selected_particles:
             total_y += particle.position.y
-        mean_y = total_y/num_of_par
+        mean_y = total_y/num_selected
         
         #quarternion mean of x
         total_quat_x = 0.0
-        for particle in particles:
+        for particle in selected_particles:
             total_quat_x += particle.orientation.x
-        mean_quat_x = total_quat_x/num_of_par
+        mean_quat_x = total_quat_x/num_selected
 
         #quarternion mean of y
         total_quat_y = 0.0
-        for particle in particles:
+        for particle in selected_particles:
             total_quat_y += particle.orientation.y
-        mean_quat_y = total_quat_y/num_of_par
+        mean_quat_y = total_quat_y/num_selected
 
         #quarternion mean of z
         total_quat_z = 0.0
-        for particle in particles:
+        for particle in selected_particles:
             total_quat_z += particle.orientation.z
-        mean_quat_z = total_quat_z/num_of_par
+        mean_quat_z = total_quat_z/num_selected
 
         #quarternion mean of w
         total_quat_w = 0.0
-        for particle in particles:
+        for particle in selected_particles:
             total_quat_w += particle.orientation.w
-        mean_quat_w = total_quat_w/num_of_par
+        mean_quat_w = total_quat_w/num_selected
 
         euclidean = math.sqrt(mean_quat_x**2 + mean_quat_y**2+mean_quat_z**2+mean_quat_w**2)
         mean_quat_x /=euclidean
