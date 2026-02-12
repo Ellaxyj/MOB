@@ -98,7 +98,7 @@ class PFLocaliser(PFLocaliserBase):
             resampled = []
             num_particles = len(self.particlecloud.poses)
             
-            num_random_particles = int(num_particles*0.1)
+            num_random_particles = int(num_particles*0.001)
             num_resampled_particles = num_particles - num_random_particles
             
             ran = random.uniform(0,1.0/num_resampled_particles)
@@ -110,8 +110,8 @@ class PFLocaliser(PFLocaliserBase):
                     i+=1
                     wei+=particle_weights[i]
                 selected_particle = self.particlecloud.poses[i]
-                x = selected_particle.position.x + random.gauss(0,0.025)
-                y = selected_particle.position.y + random.gauss(0,0.025)
+                x = selected_particle.position.x + random.gauss(0,0.01)
+                y = selected_particle.position.y + random.gauss(0,0.01)
                 theta = getHeading(selected_particle.orientation) + random.gauss(0,0.01)
 
                 new_particle = Pose()
@@ -121,8 +121,8 @@ class PFLocaliser(PFLocaliserBase):
                 
                 
             for i in range(num_random_particles):
-                random_x = random.uniform(-50,50)
-                random_y = random.uniform(-50,50)
+                random_x = random.uniform(10,25)
+                random_y = random.uniform(10,25)
                 random_theta = random.uniform(-math.pi,math.pi)
                 random_particle = Pose()
                 random_particle.position = Point(x=random_x,y=random_y,z=0.0)
