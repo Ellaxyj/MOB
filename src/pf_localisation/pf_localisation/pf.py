@@ -13,13 +13,13 @@ class PFLocaliser(PFLocaliserBase):
         super().__init__(logger, clock)
         
         # ----- Set motion model parameters
-        self.ODOM_ROTATION_NOISE = 0.02
-        self.ODOM_TRANSLATION_NOISE = 0.02
+        self.ODOM_ROTATION_NOISE = 0.05
+        self.ODOM_TRANSLATION_NOISE = 0.05
         self.ODOM_DRIFT_NOISE =0.02
 
-        self.INITIAL_POSE_NOISE_X=0.2
-        self.INITIAL_POSE_NOISE_Y=0.2
-        self.INITIAL_POSE_NOISE_THETA=0.2
+        self.INITIAL_POSE_NOISE_X=0.1
+        self.INITIAL_POSE_NOISE_Y=0.1
+        self.INITIAL_POSE_NOISE_THETA=0.1
 
         self.NUMBER_OF_PARTICLE= 1000
         
@@ -55,9 +55,9 @@ class PFLocaliser(PFLocaliserBase):
 
 
         for i in range(self.NUMBER_OF_PARTICLE): 
-            x = random.gauss(init_x,self.ODOM_TRANSLATION_NOISE)
-            y = random.gauss(init_y,self.ODOM_DRIFT_NOISE)
-            theta = random.gauss(init_theta,self.ODOM_ROTATION_NOISE)
+            x = random.gauss(init_x,self.INITIAL_POSE_NOISE_X)
+            y = random.gauss(init_y,self.INITIAL_POSE_NOISE_Y)
+            theta = random.gauss(init_theta,self.INITIAL_POSE_NOISE_THETA)
 
             particle = Pose()
             particle.position = Point(x=x,y=y,z=0.0)
@@ -98,7 +98,7 @@ class PFLocaliser(PFLocaliserBase):
             resampled = []
             num_particles = len(self.particlecloud.poses)
             
-            num_random_particles = int(num_particles*0.001)
+            num_random_particles = int(num_particles*0.04)
             num_resampled_particles = num_particles - num_random_particles
             
             ran = random.uniform(0,1.0/num_resampled_particles)
@@ -110,16 +110,18 @@ class PFLocaliser(PFLocaliserBase):
                     i+=1
                     wei+=particle_weights[i]
                 selected_particle = self.particlecloud.poses[i]
-                x = selected_particle.position.x + random.gauss(0,0.01)
-                y = selected_particle.position.y + random.gauss(0,0.01)
-                theta = getHeading(selected_particle.orientation) + random.gauss(0,0.01)
+                #particle + noise
+                x = selected_particle.position.x + random.gauss(0,0.05)
+                y = selected_particle.position.y + random.gauss(0,0.05)
+                theta = getHeading(selected_particle.orientation) + random.gauss(0,0.05)
 
                 new_particle = Pose()
                 new_particle.position = Point(x=x,y=y,z=0.0)
                 new_particle.orientation = rotateQuaternion(Quaternion(w=1.0),theta)
                 resampled.append(new_particle)
                 
-                
+
+            #generate random particles in the map    
             for i in range(num_random_particles):
                 random_x = random.uniform(10,25)
                 random_y = random.uniform(10,25)
