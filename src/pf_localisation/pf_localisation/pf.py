@@ -13,9 +13,9 @@ class PFLocaliser(PFLocaliserBase):
         super().__init__(logger, clock)
         
         # ----- Set motion model parameters
-        self.ODOM_ROTATION_NOISE = 0.5
-        self.ODOM_TRANSLATION_NOISE = 0.5
-        self.ODOM_DRIFT_NOISE =0.5
+        self.ODOM_ROTATION_NOISE = 0.02
+        self.ODOM_TRANSLATION_NOISE = 0.02
+        self.ODOM_DRIFT_NOISE =0.02
 
         self.INITIAL_POSE_NOISE_X=0.2
         self.INITIAL_POSE_NOISE_Y=0.2
